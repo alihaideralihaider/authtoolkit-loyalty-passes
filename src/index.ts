@@ -6,3 +6,4 @@ export * from "./events/loyalty-event-service.js";
 export * from "./offers/loyalty-offer-service.js";
 export * from "./passes/loyalty-pass-service.js";
 export * from "./routes/controllers.js";
+export * from "./storage/index.js";

@@ -4,9 +4,17 @@ import type {
   StartOfferInput
 } from "../types/index.js";
 import { createId, nowIso } from "../core/id.js";
+import {
+  InMemoryLoyaltyOfferRepository,
+  type LoyaltyOfferRepository
+} from "../storage/index.js";
 
 export class LoyaltyOfferService {
-  private readonly offers = new Map<string, LoyaltyOffer>();
+  private readonly offerRepository: LoyaltyOfferRepository;
+
+  constructor(offerRepository: LoyaltyOfferRepository = new InMemoryLoyaltyOfferRepository()) {
+    this.offerRepository = offerRepository;
+  }
 
   startOffer(input: StartOfferInput): LoyaltyOffer {
     const timestamp = nowIso();
@@ -24,7 +32,7 @@ export class LoyaltyOfferService {
       updatedAt: timestamp
     };
 
-    this.offers.set(offer.id, offer);
+    this.offerRepository.save(offer);
     return offer;
   }
 
@@ -45,20 +53,20 @@ export class LoyaltyOfferService {
       updatedAt: nowIso()
     };
 
-    this.offers.set(redeemedOffer.id, redeemedOffer);
+    this.offerRepository.save(redeemedOffer);
     return redeemedOffer;
   }
 
   getOffer(offerId: string): LoyaltyOffer | undefined {
-    return this.offers.get(offerId);
+    return this.offerRepository.findById(offerId);
   }
 
   listOffers(): LoyaltyOffer[] {
-    return [...this.offers.values()];
+    return this.offerRepository.list();
   }
 
   private requireOffer(offerId: string): LoyaltyOffer {
-    const offer = this.offers.get(offerId);
+    const offer = this.offerRepository.findById(offerId);
     if (!offer) {
       throw new Error(`Unknown offerId: ${offerId}`);
     }

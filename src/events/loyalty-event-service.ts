@@ -1,8 +1,16 @@
 import type { LoyaltyEvent, RecordEventInput } from "../types/index.js";
 import { createId, nowIso } from "../core/id.js";
+import {
+  InMemoryLoyaltyEventRepository,
+  type LoyaltyEventRepository
+} from "../storage/index.js";
 
 export class LoyaltyEventService {
-  private readonly events = new Map<string, LoyaltyEvent>();
+  private readonly eventRepository: LoyaltyEventRepository;
+
+  constructor(eventRepository: LoyaltyEventRepository = new InMemoryLoyaltyEventRepository()) {
+    this.eventRepository = eventRepository;
+  }
 
   recordEvent(input: RecordEventInput): LoyaltyEvent {
     const timestamp = nowIso();
@@ -17,15 +25,15 @@ export class LoyaltyEventService {
       createdAt: timestamp
     };
 
-    this.events.set(event.id, event);
+    this.eventRepository.save(event);
     return event;
   }
 
   getEvent(eventId: string): LoyaltyEvent | undefined {
-    return this.events.get(eventId);
+    return this.eventRepository.findById(eventId);
   }
 
   listEvents(): LoyaltyEvent[] {
-    return [...this.events.values()];
+    return this.eventRepository.list();
   }
 }

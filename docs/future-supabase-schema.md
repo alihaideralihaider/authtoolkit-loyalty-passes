@@ -4,6 +4,8 @@ No migrations are included in V1. These are proposed future tables.
 
 ## loyalty_customers
 
+Repository interface: `CustomerRepository`
+
 - id
 - external_customer_id
 - email
@@ -14,6 +16,8 @@ No migrations are included in V1. These are proposed future tables.
 - updated_at
 
 ## loyalty_passes
+
+Repository interface: `LoyaltyPassRepository`
 
 - id
 - customer_id
@@ -28,6 +32,8 @@ No migrations are included in V1. These are proposed future tables.
 
 ## loyalty_events
 
+Repository interface: `LoyaltyEventRepository`
+
 - id
 - type
 - customer_id
@@ -38,6 +44,8 @@ No migrations are included in V1. These are proposed future tables.
 - created_at
 
 ## loyalty_offers
+
+Repository interface: `LoyaltyOfferRepository`
 
 - id
 - customer_id
@@ -53,6 +61,8 @@ No migrations are included in V1. These are proposed future tables.
 
 ## loyalty_redemptions
 
+Initial repository owner: future redemption repository or `LoyaltyOfferRepository` extension. V1 keeps redemption state on `LoyaltyOffer`.
+
 - id
 - offer_id
 - customer_id
@@ -61,6 +71,8 @@ No migrations are included in V1. These are proposed future tables.
 - created_at
 
 ## loyalty_provider_objects
+
+Initial repository owner: future provider object repository or `LoyaltyPassRepository` extension. V1 stores `providerObjectId` on `LoyaltyPass`.
 
 - id
 - pass_id

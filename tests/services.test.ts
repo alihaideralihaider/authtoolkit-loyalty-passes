@@ -4,6 +4,12 @@ import { resetIdsForTests } from "../src/core/id.js";
 import { LoyaltyEventService } from "../src/events/loyalty-event-service.js";
 import { LoyaltyOfferService } from "../src/offers/loyalty-offer-service.js";
 import { LoyaltyPassService } from "../src/passes/loyalty-pass-service.js";
+import {
+  InMemoryCustomerRepository,
+  InMemoryLoyaltyEventRepository,
+  InMemoryLoyaltyOfferRepository,
+  InMemoryLoyaltyPassRepository
+} from "../src/storage/index.js";
 
 describe("AuthToolkit Loyalty Passes foundation", () => {
   beforeEach(() => {
@@ -53,6 +59,37 @@ describe("AuthToolkit Loyalty Passes foundation", () => {
     assert.equal(updated.providerResult.providerObjectId, "google_mock_pass_000001");
   });
 
+  it("pass service works with default in-memory repositories", async () => {
+    const service = new LoyaltyPassService();
+    const issued = await service.issuePass({
+      customer: { id: "cust_default" },
+      platform: "apple",
+      templateId: "default_template"
+    });
+
+    assert.equal(service.getPass(issued.pass.id)?.id, issued.pass.id);
+    assert.equal(service.getCustomer("cust_default")?.id, "cust_default");
+    assert.equal(service.listPasses().length, 1);
+  });
+
+  it("pass service accepts injected repositories", async () => {
+    const customerRepository = new InMemoryCustomerRepository();
+    const passRepository = new InMemoryLoyaltyPassRepository();
+    const service = new LoyaltyPassService({
+      customerRepository,
+      passRepository
+    });
+
+    const issued = await service.issuePass({
+      customer: { id: "cust_injected" },
+      platform: "google",
+      templateId: "injected_template"
+    });
+
+    assert.equal(passRepository.findById(issued.pass.id)?.id, issued.pass.id);
+    assert.equal(customerRepository.findById("cust_injected")?.id, "cust_injected");
+  });
+
   it("starts an offer", () => {
     const service = new LoyaltyOfferService();
 
@@ -66,6 +103,29 @@ describe("AuthToolkit Loyalty Passes foundation", () => {
     assert.equal(offer.id, "offer_000001");
     assert.equal(offer.status, "active");
     assert.equal(offer.customerId, "cust_123");
+  });
+
+  it("offer service works with default in-memory repositories", () => {
+    const service = new LoyaltyOfferService();
+    const offer = service.startOffer({
+      customerId: "cust_default",
+      title: "Default repository offer"
+    });
+
+    assert.equal(service.getOffer(offer.id)?.id, offer.id);
+    assert.equal(service.listOffers().length, 1);
+  });
+
+  it("offer service accepts an injected repository", () => {
+    const offerRepository = new InMemoryLoyaltyOfferRepository();
+    const service = new LoyaltyOfferService(offerRepository);
+
+    const offer = service.startOffer({
+      customerId: "cust_injected",
+      title: "Injected repository offer"
+    });
+
+    assert.equal(offerRepository.findById(offer.id)?.title, "Injected repository offer");
   });
 
   it("redeems an active offer", () => {
@@ -103,5 +163,28 @@ describe("AuthToolkit Loyalty Passes foundation", () => {
     assert.equal(event.type, "checkout_completed");
     assert.equal(event.customerId, "cust_123");
     assert.equal(event.payload.orderId, "order_123");
+  });
+
+  it("event service works with default in-memory repositories", () => {
+    const service = new LoyaltyEventService();
+    const event = service.recordEvent({
+      type: "membership_updated",
+      customerId: "cust_default"
+    });
+
+    assert.equal(service.getEvent(event.id)?.id, event.id);
+    assert.equal(service.listEvents().length, 1);
+  });
+
+  it("event service accepts an injected repository", () => {
+    const eventRepository = new InMemoryLoyaltyEventRepository();
+    const service = new LoyaltyEventService(eventRepository);
+
+    const event = service.recordEvent({
+      type: "vip_unlocked",
+      customerId: "cust_injected"
+    });
+
+    assert.equal(eventRepository.findById(event.id)?.type, "vip_unlocked");
   });
 });

@@ -10,6 +10,12 @@ import type { PassProviderAdapter } from "../adapters/pass-provider-adapter.js";
 import { ApplePassMockAdapter } from "../adapters/apple-pass-mock-adapter.js";
 import { GooglePassMockAdapter } from "../adapters/google-pass-mock-adapter.js";
 import { createId, nowIso } from "../core/id.js";
+import {
+  InMemoryCustomerRepository,
+  InMemoryLoyaltyPassRepository,
+  type CustomerRepository,
+  type LoyaltyPassRepository
+} from "../storage/index.js";
 
 export interface IssuePassResult {
   pass: LoyaltyPass;
@@ -22,15 +28,23 @@ export interface UpdatePassResult {
   providerResult: ProviderUpdateResult;
 }
 
+export interface LoyaltyPassServiceDependencies {
+  adapters?: Partial<Record<PassPlatform, PassProviderAdapter>>;
+  customerRepository?: CustomerRepository;
+  passRepository?: LoyaltyPassRepository;
+}
+
 export class LoyaltyPassService {
-  private readonly customers = new Map<string, Customer>();
-  private readonly passes = new Map<string, LoyaltyPass>();
+  private readonly customerRepository: CustomerRepository;
+  private readonly passRepository: LoyaltyPassRepository;
   private readonly adapters: Record<PassPlatform, PassProviderAdapter>;
 
-  constructor(adapters?: Partial<Record<PassPlatform, PassProviderAdapter>>) {
+  constructor(dependencies: LoyaltyPassServiceDependencies = {}) {
+    this.customerRepository = dependencies.customerRepository ?? new InMemoryCustomerRepository();
+    this.passRepository = dependencies.passRepository ?? new InMemoryLoyaltyPassRepository();
     this.adapters = {
-      apple: adapters?.apple ?? new ApplePassMockAdapter(),
-      google: adapters?.google ?? new GooglePassMockAdapter()
+      apple: dependencies.adapters?.apple ?? new ApplePassMockAdapter(),
+      google: dependencies.adapters?.google ?? new GooglePassMockAdapter()
     };
   }
 
@@ -39,9 +53,9 @@ export class LoyaltyPassService {
     const customer: Customer = {
       ...input.customer,
       metadata: input.customer.metadata ?? {},
-      createdAt: this.customers.get(input.customer.id)?.createdAt ?? timestamp
+      createdAt: this.customerRepository.findById(input.customer.id)?.createdAt ?? timestamp
     };
-    this.customers.set(customer.id, customer);
+    this.customerRepository.save(customer);
 
     const pass: LoyaltyPass = {
       id: createId("pass"),
@@ -62,7 +76,7 @@ export class LoyaltyPassService {
       installUrl: providerResult.installUrl,
       updatedAt: nowIso()
     };
-    this.passes.set(issuedPass.id, issuedPass);
+    this.passRepository.save(issuedPass);
 
     return { pass: issuedPass, customer, providerResult };
   }
@@ -83,7 +97,7 @@ export class LoyaltyPassService {
     };
 
     const providerResult = await this.adapters[updatedPass.platform].updatePass(updatedPass);
-    this.passes.set(updatedPass.id, updatedPass);
+    this.passRepository.save(updatedPass);
 
     return { pass: updatedPass, providerResult };
   }
@@ -97,25 +111,25 @@ export class LoyaltyPassService {
       updatedAt: nowIso()
     };
     const providerResult = await this.adapters[revokedPass.platform].revokePass(revokedPass);
-    this.passes.set(revokedPass.id, revokedPass);
+    this.passRepository.save(revokedPass);
 
     return { pass: revokedPass, providerResult };
   }
 
   getPass(passId: string): LoyaltyPass | undefined {
-    return this.passes.get(passId);
+    return this.passRepository.findById(passId);
   }
 
   getCustomer(customerId: string): Customer | undefined {
-    return this.customers.get(customerId);
+    return this.customerRepository.findById(customerId);
   }
 
   listPasses(): LoyaltyPass[] {
-    return [...this.passes.values()];
+    return this.passRepository.list();
   }
 
   private requirePass(passId: string): LoyaltyPass {
-    const pass = this.passes.get(passId);
+    const pass = this.passRepository.findById(passId);
     if (!pass) {
       throw new Error(`Unknown passId: ${passId}`);
     }

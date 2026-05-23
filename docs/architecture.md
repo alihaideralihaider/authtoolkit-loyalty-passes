@@ -58,6 +58,26 @@ V1 uses in-memory maps. Future storage can use Supabase tables for passes, custo
 
 No migrations are included yet.
 
+## Persistence Boundary
+
+Services depend on repository interfaces rather than raw storage maps:
+
+- `CustomerRepository`
+- `LoyaltyPassRepository`
+- `LoyaltyOfferRepository`
+- `LoyaltyEventRepository`
+
+The current implementation is local-first and in-memory:
+
+- `InMemoryCustomerRepository`
+- `InMemoryLoyaltyPassRepository`
+- `InMemoryLoyaltyOfferRepository`
+- `InMemoryLoyaltyEventRepository`
+
+Default service constructors automatically use the in-memory repositories, so local development and tests do not require `DATABASE_URL` or Supabase.
+
+A future Supabase adapter can implement the same repository interfaces without changing route/controller behavior or provider adapter behavior. Provider adapters stay separate from persistence adapters: Apple and Google adapters issue or update pass provider objects, while repository adapters store AuthToolkit domain records.
+
 ## Future Apple And Google Integrations
 
 Real integrations should live behind provider adapters. Credentials must come from environment variables or secret managers, never hardcoded code paths.
